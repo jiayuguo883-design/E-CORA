@@ -59,10 +59,14 @@ fprintf('\n===== 开始搜索 S_a =====\n');
 for idx = 1:length(S_a_values)
     Sa = S_a_values(idx);
     T_star = lower_layer_fmincon(Sa, Q, h_nm, G_nn, G_nn_prime, sigma2, B1, f_cpu_sat, H_n, beta);
-    if T_star >= T_tot - 0.15
+    % 放宽约束，与 upper_layer_simple 内部检查一致
+    if T_star >= T_tot - 0.05
         continue;
     end
-    [E, ~, ~, ~, ~] = upper_layer_simple(T_star, alpha, g_jk, B0, sigma2, kappa, beta, T_tot, f_max_j, w_j);
+    % 卫星处理 Sa 比特，按比例减少各设备的本地计算量
+    share = Sa * alpha / sum(alpha);          % 卫星分担比例
+    alpha_eff = max(0, alpha - share);        % 设备剩余需处理比特
+    [E, ~, ~, ~, ~] = upper_layer_simple(T_star, alpha_eff, g_jk, B0, sigma2, kappa, beta, T_tot, f_max_j, w_j);
     if ~isfinite(E) || E <= 0
         continue;
     end
