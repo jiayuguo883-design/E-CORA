@@ -63,10 +63,8 @@ for idx = 1:length(S_a_values)
     if T_star >= T_tot - 0.05
         continue;
     end
-    % 卫星处理 Sa 比特，按比例减少各设备的本地计算量
-    share = Sa * alpha / sum(alpha);          % 卫星分担比例
-    alpha_eff = max(0, alpha - share);        % 设备剩余需处理比特
-    [E, ~, ~, ~, ~] = upper_layer_simple(T_star, alpha_eff, g_jk, B0, sigma2, kappa, beta, T_tot, f_max_j, w_j);
+    % 带 sum(S_j)=Sa 约束的上层优化（拉格朗日对偶法）
+    [E, ~, ~, ~] = ecora_upper_layer(Sa, T_star, alpha, g_jk, B0, sigma2, kappa, beta, T_tot, f_max_j, w_j, 0.2);
     if ~isfinite(E) || E <= 0
         continue;
     end

@@ -43,9 +43,7 @@ for t_idx=1:2
         Sa = Sa_vals(i);
         T_s = lower_layer_fmincon(Sa, Q, h_nm, G_nn, G_nn_prime, sigma2, B1, f_cpu_sat, H_def, beta);
         if T_s < Tt - 0.05
-            share = Sa * alpha_def / sum(alpha_def);
-            alpha_eff = max(0, alpha_def - share);
-            [E,~,~,~,~] = upper_layer_simple(T_s, alpha_eff, g_jk, B0, sigma2, kappa, beta, Tt, f_max_j, w_j);
+            [E,~,~,~] = ecora_upper_layer(Sa, T_s, alpha_def, g_jk, B0, sigma2, kappa, beta, Tt, f_max_j, w_j, 0.2);
             E_vs_Sa(i,t_idx) = E;
         else
             E_vs_Sa(i,t_idx) = NaN;
@@ -75,10 +73,7 @@ for i = 1:length(task_sizes)
     for s = Sa_try
         T_s = lower_layer_fmincon(s, Q, h_nm, G_nn, G_nn_prime, sigma2, B1, f_cpu_sat, H_def, beta);
         if T_s < T_tot_default - 0.05
-            % 卫星处理 s 比特，按比例减少各设备的本地计算量
-            share = s * a / alpha_sum;
-            a_eff = max(0, a - share);
-            [E,~,~,~,~] = upper_layer_simple(T_s, a_eff, g_jk, B0, sigma2, kappa, beta, T_tot_default, f_max_j, w_j);
+            [E,~,~,~] = ecora_upper_layer(s, T_s, a, g_jk, B0, sigma2, kappa, beta, T_tot_default, f_max_j, w_j, 0.2);
             if isfinite(E) && E < bestE
                 bestE = E; best_Sa = s; best_Ts = T_s;
             end
@@ -132,10 +127,7 @@ for i=1:length(T_range)
     for s = linspace(0, alpha_sum, 30)
         T_s = lower_layer_fmincon(s, Q, h_nm, G_nn, G_nn_prime, sigma2, B1, f_cpu_sat, H_def, beta);
         if T_s < Tt - 0.05
-            % 卫星处理 s 比特，按比例减少各设备的本地计算量
-            share = s * alpha_def / alpha_sum;
-            alpha_eff = max(0, alpha_def - share);
-            [E,~,~,~,~] = upper_layer_simple(T_s, alpha_eff, g_jk, B0, sigma2, kappa, beta, Tt, f_max_j, w_j);
+            [E,~,~,~] = ecora_upper_layer(s, T_s, alpha_def, g_jk, B0, sigma2, kappa, beta, Tt, f_max_j, w_j, 0.2);
             if isfinite(E) && E < bestE
                 bestE = E; best_Sa = s;
             end
