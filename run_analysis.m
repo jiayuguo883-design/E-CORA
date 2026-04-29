@@ -60,20 +60,29 @@ E_ec4 = zeros(size(task_sizes));
 E_loc4 = zeros(size(task_sizes));
 E_full4 = zeros(size(task_sizes));
 
+fprintf('\n===== Fig.4: E-CORA 能耗搜索 =====\n');
 for i = 1:length(task_sizes)
     a = task_sizes(i) * ones(J,1);
-    
-    % E-CORA
-    Sa_try = linspace(0, sum(a), 10);
-    bestE = Inf;
+    alpha_sum = sum(a);
+
+    % E-CORA — 增加搜索密度
+    Sa_try = linspace(0, alpha_sum, 30);
+    bestE = Inf; best_Sa = 0; best_Ts = 0;
+    feasible_count = 0;
     for s = Sa_try
-        T_s = lower_layer_fmincon(s,Q,h_nm,G_nn,G_nn_prime,sigma2,B1,f_cpu_sat,H_def,beta);
-        if T_s < T_tot_default - 0.15
+        T_s = lower_layer_fmincon(s, Q, h_nm, G_nn, G_nn_prime, sigma2, B1, f_cpu_sat, H_def, beta);
+        % 放宽约束：只要剩余时间 > 0.05s 即可
+        if T_s < T_tot_default - 0.05
             [E,~,~,~,~] = upper_layer_simple(T_s, a, g_jk, B0, sigma2, kappa, beta, T_tot_default, f_max_j, w_j);
-            if E < bestE, bestE = E; end
+            if isfinite(E) && E < bestE
+                bestE = E; best_Sa = s; best_Ts = T_s;
+            end
+            feasible_count = feasible_count + 1;
         end
     end
     E_ec4(i) = bestE;
+    fprintf('  alpha=%.2f Mb | 可行Sa点数=%d | best Sa=%.2f Mb | T*=%.4fs | E=%.6f J\n', ...
+        task_sizes(i)/1e6, feasible_count, best_Sa/1e6, best_Ts, bestE);
     
     % 纯本地
     f_req = a * beta / T_tot_default;
@@ -109,18 +118,26 @@ grid on;
 %% Fig.5 能耗 vs 容忍延迟
 T_range = 0.3:0.1:0.8;
 E_ec5 = zeros(size(T_range)); E_loc5 = zeros(size(T_range)); E_full5 = zeros(size(T_range));
+fprintf('\n===== Fig.5: E-CORA 能耗搜索 =====\n');
 for i=1:length(T_range)
     Tt = T_range(i);
-    % E-CORA
-    bestE = Inf;
-    for s = linspace(0,sum(alpha_def),10)
-        T_s = lower_layer_fmincon(s,Q,h_nm,G_nn,G_nn_prime,sigma2,B1,f_cpu_sat,H_def,beta);
-        if T_s < Tt - 0.15
+    alpha_sum = sum(alpha_def);
+    % E-CORA — 增加搜索密度
+    bestE = Inf; best_Sa = 0; feasible_count = 0;
+    for s = linspace(0, alpha_sum, 30)
+        T_s = lower_layer_fmincon(s, Q, h_nm, G_nn, G_nn_prime, sigma2, B1, f_cpu_sat, H_def, beta);
+        % 与 upper_layer_simple 内部检查一致：剩余时间 > 0.05s
+        if T_s < Tt - 0.05
             [E,~,~,~,~] = upper_layer_simple(T_s, alpha_def, g_jk, B0, sigma2, kappa, beta, Tt, f_max_j, w_j);
-            if E < bestE, bestE = E; end
+            if isfinite(E) && E < bestE
+                bestE = E; best_Sa = s;
+            end
+            feasible_count = feasible_count + 1;
         end
     end
     E_ec5(i) = bestE;
+    fprintf('  Tt=%.1fs | 可行Sa点数=%d | best Sa=%.2f Mb | E=%.6f J\n', ...
+        Tt, feasible_count, best_Sa/1e6, bestE);
     f_req = alpha_def * beta / Tt;
     if all(f_req <= f_max_j)
         E_loc5(i) = sum(w_j .* kappa .* alpha_def .* beta .* f_req.^2);
